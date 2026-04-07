@@ -16,7 +16,7 @@ st.set_page_config(page_title="Ask From URL", layout="wide")
 # ---------------------------
 # API KEY (Use secrets in production)
 # ---------------------------
-os.environ["GROQ_API_KEY"] = st.secrets.get("GROQ_API_KEY", "your_key_here")
+os.environ["GROQ_API_KEY"] = st.secrets.get("GROQ_API_KEY", "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")
 
 # ---------------------------
 # LLM
