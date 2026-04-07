@@ -24,29 +24,24 @@ api_key = st.sidebar.text_input("Enter GROQ API Key", type="password")
 stock_symbol = st.sidebar.text_input("Stock Symbol (e.g. TATAMOTORS.NS)")
 
 # ----------------------
-# Layout: Left (Form) | Right (App)
+# Sidebar URL Form (3 fields)
 # ----------------------
-col1, col2 = st.columns([1, 2])
+st.sidebar.subheader("🌐 Enter URLs")
 
-# LEFT SIDE → URL FORM
-with col1:
-    st.subheader("🌐 Enter URLs")
+with st.sidebar.form("url_form"):
+    url1 = st.text_input("URL 1")
+    url2 = st.text_input("URL 2")
+    url3 = st.text_input("URL 3")
 
-    with st.form("url_form"):
-        url1 = st.text_input("URL 1")
-        url2 = st.text_input("URL 2")
-        url3 = st.text_input("URL 3")
-
-        submit_urls = st.form_submit_button("Submit URLs")
+    submit_urls = st.form_submit_button("Submit URLs")
 
 # Prepare URL list
 url_list = []
 if submit_urls:
     url_list = [u for u in [url1, url2, url3] if u]
 
-# RIGHT SIDE → OUTPUT
-with col2:
-    st.subheader("🤖 Assistant")
+# Main area
+st.subheader("🤖 Assistant")
 
 # ----------------------
 # Initialize LLM
