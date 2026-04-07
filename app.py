@@ -10,7 +10,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import PromptTemplate
 
 # ----------------------
-# 🔐 API KEY (hardcoded)
+# 🔐 SET API KEY (hardcoded)
 # ----------------------
 os.environ["GROQ_API_KEY"] = "YOUR_GROQ_API_KEY_HERE"
 
@@ -18,10 +18,10 @@ os.environ["GROQ_API_KEY"] = "YOUR_GROQ_API_KEY_HERE"
 # Streamlit UI
 # ----------------------
 st.set_page_config(page_title="RAG App", layout="wide")
-st.title("📄 RAG Assistant (Ask from URLs)")
+st.title("📊 RAG Assistant")
 
 # ----------------------
-# Sidebar: URL Form
+# Sidebar URL Form (3 fields)
 # ----------------------
 st.sidebar.subheader("🌐 Enter URLs")
 
@@ -32,9 +32,10 @@ with st.sidebar.form("url_form"):
 
     submit_urls = st.form_submit_button("Submit URLs")
 
-# Store URLs
+# Prepare URL list
+url_list = []
 if submit_urls:
-    st.session_state.url_list = [u for u in [url1, url2, url3] if u]
+    url_list = [u for u in [url1, url2, url3] if u]
 
 # ----------------------
 # Initialize LLM
@@ -52,17 +53,12 @@ def build_vector_store(url_list):
     loader = UnstructuredURLLoader(urls=url_list)
     data = loader.load()
 
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
-        chunk_overlap=100
-    )
+    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
     docs = splitter.split_documents(data)
 
-    embedding = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2"
-    )
-
+    embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
     vector_index = FAISS.from_documents(docs, embedding)
+
     return vector_index
 
 # ----------------------
@@ -70,7 +66,7 @@ def build_vector_store(url_list):
 # ----------------------
 prompt = PromptTemplate(
     template="""
-You are a helpful assistant.
+You are a financial assistant.
 
 Answer ONLY from the context.
 If answer is not found, say "I don't know".
@@ -84,25 +80,19 @@ Question: {question}
 )
 
 # ----------------------
-# Build Retriever (only once)
+# RAG Section
 # ----------------------
-if "url_list" in st.session_state and "retriever" not in st.session_state:
+if submit_urls and url_list:
+
     with st.spinner("Processing URLs..."):
-        vector_index = build_vector_store(st.session_state.url_list)
-        st.session_state.retriever = vector_index.as_retriever(search_kwargs={"k": 5})
-        st.success("URLs processed successfully!")
+        vector_index = build_vector_store(url_list)
+        retriever = vector_index.as_retriever(search_kwargs={"k": 5})
 
-# ----------------------
-# Main: Question Input
-# ----------------------
-query = st.text_input("💬 Ask your question:")
+    query = st.text_input("Ask your question:")
 
-if query:
-    if "retriever" not in st.session_state:
-        st.warning("⚠️ Please enter and submit URLs first")
-    else:
+    if query:
         with st.spinner("Thinking..."):
-            docs = st.session_state.retriever.invoke(query)
+            docs = retriever.invoke(query)
             context = "\n\n".join([doc.page_content for doc in docs])
 
             chain = prompt | llm
@@ -111,7 +101,7 @@ if query:
                 "question": query
             })
 
-            st.subheader("📚 Answer")
+            st.subheader("📚 RAG Answer")
             st.write(response.content)
 
 # ----------------------
