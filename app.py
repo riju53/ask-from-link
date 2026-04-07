@@ -1,11 +1,10 @@
-# app.py
 import os
 import streamlit as st
 
 # LangChain + Groq
 from langchain_groq import ChatGroq
 from langchain_community.document_loaders import UnstructuredURLLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import PromptTemplate
@@ -14,12 +13,6 @@ from langchain_core.prompts import PromptTemplate
 import yfinance as yf
 
 # ----------------------
-# Load environment
-# ----------------------
-# Set API key
-os.environ["GROQ_API_KEY"] = "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"
-os.environ["HUGGINGFACEHUB_API_TOKEN"] = "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"
-# ----------------------
 # Streamlit UI
 # ----------------------
 st.set_page_config(page_title="RAG + Stock App", layout="wide")
@@ -27,16 +20,35 @@ st.title("📊 RAG + Live Stock Assistant")
 
 # Sidebar
 st.sidebar.header("Settings")
-urls = st.sidebar.text_area("Enter URLs (one per line)", height=150)
+api_key = st.sidebar.text_input("Enter GROQ API Key", type="password")
 stock_symbol = st.sidebar.text_input("Stock Symbol (e.g. TATAMOTORS.NS)")
+
+# ----------------------
+# URL Input Form (3 fields)
+# ----------------------
+st.subheader("🌐 Enter URLs")
+
+with st.form("url_form"):
+    url1 = st.text_input("URL 1")
+    url2 = st.text_input("URL 2")
+    url3 = st.text_input("URL 3")
+
+    submit_urls = st.form_submit_button("Submit URLs")
+
+url_list = []
+if submit_urls:
+    url_list = [u for u in [url1, url2, url3] if u]
 
 # ----------------------
 # Initialize LLM
 # ----------------------
-llm = ChatGroq(
-    model="llama-3.3-70b-versatile",
-    temperature=0
-)
+llm = None
+if api_key:
+    os.environ["GROQ_API_KEY"] = api_key
+    llm = ChatGroq(
+        model="llama3-8b-8192",  # stable + fast
+        temperature=0
+    )
 
 # ----------------------
 # Build Vector Store
@@ -73,27 +85,33 @@ Question: {question}
 )
 
 # ----------------------
-# Main Logic
+# RAG Section
 # ----------------------
-if urls:
+if urls and llm:
     url_list = [u.strip() for u in urls.split("\n") if u.strip()]
-    vector_index = build_vector_store(url_list)
-    retriever = vector_index.as_retriever(search_kwargs={"k": 5})
+
+    with st.spinner("Processing URLs..."):
+        vector_index = build_vector_store(url_list)
+        retriever = vector_index.as_retriever(search_kwargs={"k": 5})
 
     query = st.text_input("Ask your question:")
 
     if query:
-        docs = retriever.invoke(query)
-        context = "\n\n".join([doc.page_content for doc in docs])
+        with st.spinner("Thinking..."):
+            docs = retriever.invoke(query)
+            context = "\n\n".join([doc.page_content for doc in docs])
 
-        chain = prompt | llm
-        response = chain.invoke({
-            "context": context,
-            "question": query
-        })
+            chain = prompt | llm
+            response = chain.invoke({
+                "context": context,
+                "question": query
+            })
 
-        st.subheader("📚 RAG Answer")
-        st.write(response.content)
+            st.subheader("📚 RAG Answer")
+            st.write(response.content)
+
+elif urls and not api_key:
+    st.warning("Please enter your GROQ API key in the sidebar")
 
 # ----------------------
 # Live Stock Section
@@ -104,8 +122,19 @@ st.subheader("📈 Live Stock Price")
 if stock_symbol:
     try:
         stock = yf.Ticker(stock_symbol)
-        price = stock.history(period="1d")["Close"].iloc[-1]
+        hist = stock.history(period="1d")
 
-        st.success(f"Current Price of {stock_symbol}: ₹ {price:.2f}")
-    except Exception as e:
+        if not hist.empty:
+            price = hist["Close"].iloc[-1]
+            st.success(f"Current Price of {stock_symbol}: ₹ {price:.2f}")
+        else:
+            st.warning("No data found for this stock")
+
+    except Exception:
         st.error("Failed to fetch stock data")
+
+# ----------------------
+# Footer
+# ----------------------
+st.markdown("---")
+st.markdown("Built with ❤️ using Groq + LangChain + Streamlit")
