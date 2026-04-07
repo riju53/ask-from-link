@@ -7,7 +7,7 @@ langchain-community==0.2.12
 langchain-core==0.2.36
 
 # Groq integration
-langchain-groq==0.1.9
+langchain-groq==1.1.2
 
 # Vector store
 faiss-cpu==1.8.0
