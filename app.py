@@ -10,66 +10,66 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import PromptTemplate
 
 # ----------------------
-# 🔐 SET API KEY (hardcoded)
+# 🔐 API KEY
 # ----------------------
-os.environ["GROQ_API_KEY"] = "YOUR_GROQ_API_KEY_HERE"
+os.environ["GROQ_API_KEY"] = "YOUR_GROQ_API_KEY"
 
 # ----------------------
-# Streamlit UI
+# UI
 # ----------------------
-st.set_page_config(page_title="RAG App", layout="wide")
-st.title("📊 RAG Assistant")
+st.set_page_config(page_title="Stock RAG App", layout="wide")
+st.title("📈 Stock Research Assistant")
 
-# ----------------------
-# Sidebar URL Form (3 fields)
-# ----------------------
-st.sidebar.subheader("🌐 Enter URLs")
+# Sidebar URLs
+st.sidebar.subheader("🌐 Enter Stock URLs")
 
 with st.sidebar.form("url_form"):
     url1 = st.text_input("URL 1")
     url2 = st.text_input("URL 2")
     url3 = st.text_input("URL 3")
-
     submit_urls = st.form_submit_button("Submit URLs")
 
-# Prepare URL list
-url_list = []
+# Save URLs
 if submit_urls:
-    url_list = [u for u in [url1, url2, url3] if u]
+    st.session_state.urls = [u for u in [url1, url2, url3] if u]
 
 # ----------------------
-# Initialize LLM
+# LLM
 # ----------------------
-llm = ChatGroq(
-    model="llama3-8b-8192",
-    temperature=0
-)
+llm = ChatGroq(model="llama3-8b-8192", temperature=0)
 
 # ----------------------
-# Build Vector Store
+# Build Vector DB
 # ----------------------
 @st.cache_resource
-def build_vector_store(url_list):
-    loader = UnstructuredURLLoader(urls=url_list)
+def build_vector_db(urls):
+    loader = UnstructuredURLLoader(urls=urls)
     data = loader.load()
 
     splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
     docs = splitter.split_documents(data)
 
     embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-    vector_index = FAISS.from_documents(docs, embedding)
+    vector_db = FAISS.from_documents(docs, embedding)
 
-    return vector_index
+    return vector_db
+
+# Build retriever once
+if "urls" in st.session_state and "retriever" not in st.session_state:
+    with st.spinner("Processing URLs..."):
+        db = build_vector_db(st.session_state.urls)
+        st.session_state.retriever = db.as_retriever(search_kwargs={"k": 3})
+        st.success("✅ Ready! Ask your question.")
 
 # ----------------------
 # Prompt
 # ----------------------
 prompt = PromptTemplate(
     template="""
-You are a financial assistant.
+You are a stock market assistant.
 
-Answer ONLY from the context.
-If answer is not found, say "I don't know".
+Answer ONLY from context.
+If not found, say "I don't know".
 
 Context:
 {context}
@@ -80,19 +80,21 @@ Question: {question}
 )
 
 # ----------------------
-# RAG Section
+# Question Section
 # ----------------------
-if submit_urls and url_list:
+query = st.text_input("💬 Ask your question (e.g. 'Is Tata Motors a good buy?')")
+ask_btn = st.button("Ask Me")
 
-    with st.spinner("Processing URLs..."):
-        vector_index = build_vector_store(url_list)
-        retriever = vector_index.as_retriever(search_kwargs={"k": 5})
+if ask_btn:
+    if not query:
+        st.warning("Please enter a question")
 
-    query = st.text_input("Ask your question:")
+    elif "retriever" not in st.session_state:
+        st.warning("⚠️ Please submit URLs first")
 
-    if query:
-        with st.spinner("Thinking..."):
-            docs = retriever.invoke(query)
+    else:
+        with st.spinner("Analyzing..."):
+            docs = st.session_state.retriever.invoke(query)
             context = "\n\n".join([doc.page_content for doc in docs])
 
             chain = prompt | llm
@@ -101,7 +103,7 @@ if submit_urls and url_list:
                 "question": query
             })
 
-            st.subheader("📚 RAG Answer")
+            st.subheader("📊 Answer")
             st.write(response.content)
 
 # ----------------------
