@@ -27,3 +27,5 @@ numpy==1.26.4
 
 # Optional (better UI/logging)
 rich==13.7.1
+
+yfinance==0.2.66
