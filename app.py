@@ -18,7 +18,8 @@ import yfinance as yf
 # Load environment
 # ----------------------
 load_dotenv()
-
+os.environ["GROQ_API_KEY"] = "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"
+os.environ["HUGGINGFACEHUB_API_TOKEN"]="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"
 # ----------------------
 # Streamlit UI
 # ----------------------
