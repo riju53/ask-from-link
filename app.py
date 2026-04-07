@@ -3,7 +3,7 @@ import os
 import streamlit as st
 
 # LangChain + Groq
-from langchain-groq import ChatGroq
+from langchain_groq import ChatGroq
 from langchain_community.document_loaders import UnstructuredURLLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
