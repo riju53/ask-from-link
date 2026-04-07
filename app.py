@@ -10,18 +10,18 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import PromptTemplate
 
 # ----------------------
-# 🔐 SET API KEY (hardcoded)
+# 🔐 API KEY (hardcoded)
 # ----------------------
-os.environ["GROQ_API_KEY"] = "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"
+os.environ["GROQ_API_KEY"] = "YOUR_GROQ_API_KEY_HERE"
 
 # ----------------------
 # Streamlit UI
 # ----------------------
 st.set_page_config(page_title="RAG App", layout="wide")
-st.title("📊 RAG Assistant")
+st.title("📄 RAG Assistant (Ask from URLs)")
 
 # ----------------------
-# Sidebar URL Form (3 fields)
+# Sidebar: URL Form
 # ----------------------
 st.sidebar.subheader("🌐 Enter URLs")
 
@@ -32,10 +32,9 @@ with st.sidebar.form("url_form"):
 
     submit_urls = st.form_submit_button("Submit URLs")
 
-# Prepare URL list
-url_list = []
+# Store URLs
 if submit_urls:
-    url_list = [u for u in [url1, url2, url3] if u]
+    st.session_state.url_list = [u for u in [url1, url2, url3] if u]
 
 # ----------------------
 # Initialize LLM
@@ -53,12 +52,17 @@ def build_vector_store(url_list):
     loader = UnstructuredURLLoader(urls=url_list)
     data = loader.load()
 
-    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=500,
+        chunk_overlap=100
+    )
     docs = splitter.split_documents(data)
 
-    embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-    vector_index = FAISS.from_documents(docs, embedding)
+    embedding = HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2"
+    )
 
+    vector_index = FAISS.from_documents(docs, embedding)
     return vector_index
 
 # ----------------------
@@ -66,7 +70,7 @@ def build_vector_store(url_list):
 # ----------------------
 prompt = PromptTemplate(
     template="""
-You are a financial assistant.
+You are a helpful assistant.
 
 Answer ONLY from the context.
 If answer is not found, say "I don't know".
@@ -80,19 +84,25 @@ Question: {question}
 )
 
 # ----------------------
-# RAG Section
+# Build Retriever (only once)
 # ----------------------
-if submit_urls and url_list:
-
+if "url_list" in st.session_state and "retriever" not in st.session_state:
     with st.spinner("Processing URLs..."):
-        vector_index = build_vector_store(url_list)
-        retriever = vector_index.as_retriever(search_kwargs={"k": 5})
+        vector_index = build_vector_store(st.session_state.url_list)
+        st.session_state.retriever = vector_index.as_retriever(search_kwargs={"k": 5})
+        st.success("URLs processed successfully!")
 
-    query = st.text_input("Ask your question:")
+# ----------------------
+# Main: Question Input
+# ----------------------
+query = st.text_input("💬 Ask your question:")
 
-    if query:
+if query:
+    if "retriever" not in st.session_state:
+        st.warning("⚠️ Please enter and submit URLs first")
+    else:
         with st.spinner("Thinking..."):
-            docs = retriever.invoke(query)
+            docs = st.session_state.retriever.invoke(query)
             context = "\n\n".join([doc.page_content for doc in docs])
 
             chain = prompt | llm
@@ -101,7 +111,7 @@ if submit_urls and url_list:
                 "question": query
             })
 
-            st.subheader("📚 RAG Answer")
+            st.subheader("📚 Answer")
             st.write(response.content)
 
 # ----------------------
