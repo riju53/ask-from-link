@@ -9,7 +9,12 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import PromptTemplate
 
 # ---------------------------
-# API KEY
+# PAGE CONFIG
+# ---------------------------
+st.set_page_config(page_title="Ask From URL", layout="wide")
+
+# ---------------------------
+# API KEY (Use secrets in production)
 # ---------------------------
 os.environ["GROQ_API_KEY"] = st.secrets.get("GROQ_API_KEY", "your_key_here")
 
@@ -22,14 +27,12 @@ llm = ChatGroq(
 )
 
 # ---------------------------
-# UI
+# UI TITLE
 # ---------------------------
-st.set_page_config(page_title="Ask From URL", layout="wide")
-
 st.title("🌐 Ask Questions From Website")
 
 # ---------------------------
-# SIDEBAR
+# SIDEBAR INPUT
 # ---------------------------
 st.sidebar.header("🔗 Enter URLs")
 
@@ -37,7 +40,7 @@ urls = st.sidebar.text_area("Enter URLs (one per line)")
 process_btn = st.sidebar.button("Process URLs")
 
 # ---------------------------
-# VECTOR STORE
+# CREATE VECTOR STORE
 # ---------------------------
 @st.cache_resource
 def create_vector_store(url_list):
@@ -64,13 +67,13 @@ def create_vector_store(url_list):
 if process_btn and urls:
     url_list = [u.strip() for u in urls.split("\n") if u.strip()]
 
-    with st.spinner("Processing URLs..."):
+    with st.spinner("🔄 Processing URLs..."):
         st.session_state.vectorstore = create_vector_store(url_list)
 
-    st.sidebar.success("✅ URLs processed!")
+    st.sidebar.success("✅ URLs processed successfully!")
 
 # ---------------------------
-# QUESTION SECTION
+# MAIN QA SECTION
 # ---------------------------
 if "vectorstore" in st.session_state:
     retriever = st.session_state.vectorstore.as_retriever(
@@ -80,11 +83,14 @@ if "vectorstore" in st.session_state:
 
     st.subheader("💬 Ask your question")
 
-    # 👉 Input + Button
-    question = st.text_input("Enter your question")
-    ask_btn = st.button("Ask Me")
+    # ---------------------------
+    # FORM (Enter + Button)
+    # ---------------------------
+    with st.form("qa_form"):
+        question = st.text_input("Enter your question")
+        submit = st.form_submit_button("Ask Me")
 
-    if ask_btn and question:
+    if submit and question:
         prompt = PromptTemplate(
             template="""
             You are a helpful assistant.
@@ -99,22 +105,28 @@ if "vectorstore" in st.session_state:
             input_variables=['context', 'question']
         )
 
-        retrieved_docs = retriever.invoke(question)
-        context_text = "\n\n".join(doc.page_content for doc in retrieved_docs)
+        with st.spinner("🔍 Retrieving answer..."):
+            retrieved_docs = retriever.invoke(question)
+            context_text = "\n\n".join(doc.page_content for doc in retrieved_docs)
 
-        final_prompt = prompt.invoke({
-            "context": context_text,
-            "question": question
-        })
+            final_prompt = prompt.invoke({
+                "context": context_text,
+                "question": question
+            })
 
-        with st.spinner("Thinking..."):
             answer = llm.invoke(final_prompt)
 
+        # ---------------------------
+        # OUTPUT
+        # ---------------------------
         st.subheader("📌 Answer")
         st.write(answer.content)
 
+        # ---------------------------
+        # SOURCE CONTEXT
+        # ---------------------------
         with st.expander("📄 Source Context"):
             st.write(context_text)
 
 else:
-    st.info("👈 Enter URLs in the sidebar and click 'Process URLs'")
+    st.info("👈 Enter URLs in the sidebar and click 'Process URLs' to begin.")
