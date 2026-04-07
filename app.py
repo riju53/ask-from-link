@@ -29,7 +29,7 @@ st.set_page_config(page_title="Ask From URL", layout="wide")
 st.title("🌐 Ask Questions From Website")
 
 # ---------------------------
-# SIDEBAR INPUT
+# SIDEBAR
 # ---------------------------
 st.sidebar.header("🔗 Enter URLs")
 
@@ -37,7 +37,7 @@ urls = st.sidebar.text_area("Enter URLs (one per line)")
 process_btn = st.sidebar.button("Process URLs")
 
 # ---------------------------
-# Vector Store Cache
+# VECTOR STORE
 # ---------------------------
 @st.cache_resource
 def create_vector_store(url_list):
@@ -59,7 +59,7 @@ def create_vector_store(url_list):
 
 
 # ---------------------------
-# PROCESS BUTTON LOGIC
+# PROCESS URLS
 # ---------------------------
 if process_btn and urls:
     url_list = [u.strip() for u in urls.split("\n") if u.strip()]
@@ -79,9 +79,12 @@ if "vectorstore" in st.session_state:
     )
 
     st.subheader("💬 Ask your question")
-    question = st.text_input("Type your question here")
 
-    if question:
+    # 👉 Input + Button
+    question = st.text_input("Enter your question")
+    ask_btn = st.button("Ask Me")
+
+    if ask_btn and question:
         prompt = PromptTemplate(
             template="""
             You are a helpful assistant.
