@@ -1,6 +1,5 @@
 import os
 import streamlit as st
-import pickle
 
 from langchain_groq import ChatGroq
 from langchain_community.document_loaders import UnstructuredURLLoader
@@ -10,7 +9,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import PromptTemplate
 
 # ---------------------------
-# API KEY (IMPORTANT)
+# API KEY
 # ---------------------------
 os.environ["GROQ_API_KEY"] = st.secrets.get("GROQ_API_KEY", "your_key_here")
 
@@ -26,12 +25,19 @@ llm = ChatGroq(
 # UI
 # ---------------------------
 st.set_page_config(page_title="Ask From URL", layout="wide")
+
 st.title("🌐 Ask Questions From Website")
 
-urls = st.text_area("Enter URLs (one per line)")
+# ---------------------------
+# SIDEBAR INPUT
+# ---------------------------
+st.sidebar.header("🔗 Enter URLs")
+
+urls = st.sidebar.text_area("Enter URLs (one per line)")
+process_btn = st.sidebar.button("Process URLs")
 
 # ---------------------------
-# Process URLs (cached)
+# Vector Store Cache
 # ---------------------------
 @st.cache_resource
 def create_vector_store(url_list):
@@ -52,23 +58,28 @@ def create_vector_store(url_list):
     return vector_index
 
 
-if urls:
+# ---------------------------
+# PROCESS BUTTON LOGIC
+# ---------------------------
+if process_btn and urls:
     url_list = [u.strip() for u in urls.split("\n") if u.strip()]
 
     with st.spinner("Processing URLs..."):
-        vector_index = create_vector_store(url_list)
+        st.session_state.vectorstore = create_vector_store(url_list)
 
-    retriever = vector_index.as_retriever(
+    st.sidebar.success("✅ URLs processed!")
+
+# ---------------------------
+# QUESTION SECTION
+# ---------------------------
+if "vectorstore" in st.session_state:
+    retriever = st.session_state.vectorstore.as_retriever(
         search_type="similarity",
         search_kwargs={"k": 2}
     )
 
-    st.success("Ready! Ask your question 👇")
-
-    # ---------------------------
-    # Question Input
-    # ---------------------------
-    question = st.text_input("Ask your question")
+    st.subheader("💬 Ask your question")
+    question = st.text_input("Type your question here")
 
     if question:
         prompt = PromptTemplate(
@@ -96,9 +107,11 @@ if urls:
         with st.spinner("Thinking..."):
             answer = llm.invoke(final_prompt)
 
-        st.subheader("Answer:")
+        st.subheader("📌 Answer")
         st.write(answer.content)
 
-        # Optional: show sources
         with st.expander("📄 Source Context"):
             st.write(context_text)
+
+else:
+    st.info("👈 Enter URLs in the sidebar and click 'Process URLs'")
