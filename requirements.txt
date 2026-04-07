@@ -13,4 +13,3 @@ beautifulsoup4==4.14.3
 lxml==6.0.2
 yfinance==0.2.66
 python-dotenv==1.2.2
-toml==0.10.2
