@@ -9,19 +9,16 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import PromptTemplate
 
-# Stock API
-import yfinance as yf
+# ----------------------
+# 🔐 SET API KEY (hardcoded)
+# ----------------------
+os.environ["GROQ_API_KEY"] = "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"
 
 # ----------------------
 # Streamlit UI
 # ----------------------
-st.set_page_config(page_title="RAG + Stock App", layout="wide")
-st.title("📊 RAG + Live Stock Assistant")
-
-# Sidebar
-st.sidebar.header("Settings")
-api_key = st.sidebar.text_input("Enter GROQ API Key", type="password")
-stock_symbol = st.sidebar.text_input("Stock Symbol (e.g. TATAMOTORS.NS)")
+st.set_page_config(page_title="RAG App", layout="wide")
+st.title("📊 RAG Assistant")
 
 # ----------------------
 # Sidebar URL Form (3 fields)
@@ -40,19 +37,13 @@ url_list = []
 if submit_urls:
     url_list = [u for u in [url1, url2, url3] if u]
 
-# Main area
-st.subheader("🤖 Assistant")
-
 # ----------------------
 # Initialize LLM
 # ----------------------
-llm = None
-if api_key:
-    os.environ["GROQ_API_KEY"] = api_key
-    llm = ChatGroq(
-        model="llama3-8b-8192",  # stable + fast
-        temperature=0
-    )
+llm = ChatGroq(
+    model="llama3-8b-8192",
+    temperature=0
+)
 
 # ----------------------
 # Build Vector Store
@@ -91,8 +82,7 @@ Question: {question}
 # ----------------------
 # RAG Section
 # ----------------------
-if urls and llm:
-    url_list = [u.strip() for u in urls.split("\n") if u.strip()]
+if submit_urls and url_list:
 
     with st.spinner("Processing URLs..."):
         vector_index = build_vector_store(url_list)
@@ -113,29 +103,6 @@ if urls and llm:
 
             st.subheader("📚 RAG Answer")
             st.write(response.content)
-
-elif urls and not api_key:
-    st.warning("Please enter your GROQ API key in the sidebar")
-
-# ----------------------
-# Live Stock Section
-# ----------------------
-st.divider()
-st.subheader("📈 Live Stock Price")
-
-if stock_symbol:
-    try:
-        stock = yf.Ticker(stock_symbol)
-        hist = stock.history(period="1d")
-
-        if not hist.empty:
-            price = hist["Close"].iloc[-1]
-            st.success(f"Current Price of {stock_symbol}: ₹ {price:.2f}")
-        else:
-            st.warning("No data found for this stock")
-
-    except Exception:
-        st.error("Failed to fetch stock data")
 
 # ----------------------
 # Footer
