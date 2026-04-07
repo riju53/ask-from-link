@@ -1,31 +1,13 @@
-# Core app
 streamlit==1.33.0
-
-# LangChain ecosystem
 langchain==0.2.14
 langchain-community==0.2.12
 langchain-core==0.2.36
-
-# Groq integration
-langchain-groq==1.1.2
-
-# Vector store
+langchain-groq==0.1.9
 faiss-cpu==1.8.0
-
-# Embeddings + utilities
-sentence-transformers==2.7.0
-huggingface-hub==0.23.4
-
-# PDF processing
 pypdf==4.2.0
-
-# Tokenization (important for chunking)
-tiktoken==0.7.0
-
-# Data handling
-numpy==1.26.4
-
-# Optional (better UI/logging)
-rich==13.7.1
-
+sentence-transformers==2.7.0
 yfinance==0.2.66
+tiktoken==0.7.0
+numpy==1.26.4
+rich==13.7.1
+protobuf<4.0
